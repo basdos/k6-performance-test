@@ -1,17 +1,23 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js"
+import { htmlReport } from '../bundle.js';
+import { config } from '../configs/config.js';
 
 export let options = {
-    vus: 100, //users
-    duration: '1s' , //total run time
+    stages: config.stages_stress,
 };
 
 export default function () {
-    const baseUrl = 'https://dummyjson.com';
+    const baseUrl = config.base_url;
     const endpoint = '/auth/login';
+
     let url = `${baseUrl}${endpoint}`
-    let payload = JSON.stringify({"username": "emilys","password": "emilyspass"});
+
+    let payload = JSON.stringify({
+        "username": config.username,
+        'password': config.password
+    });
+
     let params = {
         headers: {
             'Content-Type': 'application/json',
@@ -20,18 +26,21 @@ export default function () {
 
     let res = http.post(url, payload, params);
 
+    console.log(res.body)
+    console.log(res.timings.duration)
+
     check(res, {
         'Is status code 200': (r) => r.status === 200,
-        'Response time < 600ms': (r) => r.timings.duration < 600,
+        'Response time under standart': (r) => r.timings.duration < config.filter_response_time,
         'Response body contains username': (r) => r.body.includes('Emily'),
     });
 
     sleep(1);
 }
 
-export function handleSummary(data){
+export function handleSummary(data) {
     return {
-        "Result Stress Test.html": htmlReport(data),
+        "./reports/Result Stress Test.html": htmlReport(data),
     };
 }
 
